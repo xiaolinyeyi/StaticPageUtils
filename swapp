@@ -1,0 +1,6 @@
+<head>
+跳转小程序
+</head>
+<script>
+window.location.href = "weixin://dl/business/?t=YtqQ6kpcrQd"
+</script>
