@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>石家庄小区查看</title>
+    <!-- 引入Vue3 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.min.js"></script>
+    <!-- 引入Element Plus CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.3.9/dist/index.css">
+    <!-- 引入Element Plus JS -->
+    <script src="https://cdn.jsdelivr.net/npm/element-plus@2.3.9/dist/index.full.min.js"></script>
+    <!-- 引入Element Plus图标 -->
+    <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.1.0/dist/index.iife.min.js"></script>
+</head>
+<body>
+    <div id="app" style="padding: 20px; max-width: 1200px; margin: 0 auto;">        
+        <!-- 查询区域 -->
+        <el-card style="margin-bottom: 20px; padding: 15px;">
+            <el-row :gutter="20">
+                <el-col :span="8" :xs="24">
+                    <el-select 
+                        v-model="selectedArea" 
+                        placeholder="请选择区域"
+                        clearable
+                        style="width: 100%;"
+                    >
+                        <el-option label="桥西" value="桥西"></el-option>
+                        <el-option label="裕华" value="裕华"></el-option>
+                        <el-option label="长安" value="长安"></el-option>
+                    </el-select>
+                </el-col>
+                <el-col :span="4" :xs="24">
+                    <el-button 
+                        type="primary" 
+                        @click="fetchData"
+                        :loading="loading"
+                        :disabled="!selectedArea"
+                    >
+                        <el-icon><Search /></el-icon>
+                        <span>查询数据</span>
+                    </el-button>
+                </el-col>
+            </el-row>
+        </el-card>
+        
+        <!-- 表格区域 -->
+        <el-card style="padding: 15px;">
+            <el-table 
+                :data="tableData" 
+                border
+                style="width: 100%;"
+                v-loading="loading"
+                element-loading-text="正在加载数据..."
+            >
+                <el-table-column prop="name" label="名称" width="180"></el-table-column>
+                <el-table-column prop="address" label="地址"></el-table-column>
+                <el-table-column prop="completion_time" label="建成时间" width="140"></el-table-column>
+                <el-table-column prop="type" label="类型" width="120"></el-table-column>
+                <el-table-column prop="tags" label="特色">
+                    <template #default="scope">
+                        <el-tag 
+                            v-for="(tag, index) in scope.row.tags" 
+                            :key="index"
+                            type="info"
+                            size="small"
+                            style="margin-right: 5px;"
+                        >
+                            {{ tag }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="average_price" label="2025-7月均价" width="140">
+                    <template #default="scope">
+                        <span>{{ scope.row.average_price | formatPrice }}</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+            
+            <!-- 分页 -->
+            <div style="margin-top: 15px; text-align: right;">
+                <el-pagination
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    layout="prev, pager, next"
+                    :total="totalItems"
+                ></el-pagination>
+            </div>
+        </el-card>
+    </div>
+
+    <script>
+        // 初始化Vue应用
+        const { createApp, ref } = Vue;
+        
+        // 注册所有图标
+        const app = createApp({
+            setup() {
+                // 状态管理
+                const selectedArea = ref('');
+                const tableData = ref([]);
+                const loading = ref(false);
+                const currentPage = ref(1);
+                const totalItems = ref(0);
+
+                // 数据查询 - 优化跨域请求
+                const fetchData = () => {
+                    // 验证区域是否选择
+                    if (!selectedArea.value) {
+                        ElementPlus.ElMessage.warning('请先选择区域');
+                        return;
+                    }
+                    
+                    loading.value = true;
+
+                    fetch(`https://community-info.xiaolinyeyi.workers.dev/api/query?area=${selectedArea.value}&page=${currentPage.value - 1}`)
+                    .then(response => {
+                        // 检查HTTP响应状态
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: 状态码 ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 假设接口返回格式为 { list: [], total: 0 } 或直接是数组
+                        tableData.value = data.list || data || [];
+                        totalItems.value = data.total || tableData.value.length;
+                        loading.value = false;
+                        
+                        if (tableData.value.length === 0) {
+                            ElementPlus.ElMessage.info('未查询到相关数据');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取数据失败:', error);
+                        ElementPlus.ElMessage.error(`获取数据失败: ${error.message}`);
+                        loading.value = false;
+                        tableData.value = [];
+                        totalItems.value = 0;
+                        
+                        // 显示跨域问题解决方案提示
+                        if (error.message.includes('CORS') || error.message.includes('跨域')) {
+                            ElementPlus.ElMessage({
+                                message: '检测到跨域问题，可尝试使用代理服务器',
+                                type: 'warning',
+                                duration: 5000
+                            });
+                        }
+                    });
+                };
+
+                // 分页事件处理
+                const handleCurrentChange = (val) => {
+                    currentPage.value = val;
+                    fetchData();
+                };
+
+                return {
+                    selectedArea,
+                    tableData,
+                    loading,
+                    currentPage,
+                    totalItems,
+                    fetchData,
+                    handleCurrentChange
+                };
+            },
+            filters: {
+                // 格式化价格显示
+                formatPrice(value) {
+                    if (!value) return '0';
+                    return typeof value === 'number' ? value.toLocaleString() + ' 元' : value;
+                }
+            }
+        });
+        
+        // 全局注册Element Plus和图标
+        app.use(ElementPlus);
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component);
+        }
+        
+        // 挂载应用
+        app.mount('#app');
+    </script>
+</body>
+</html>
+    
