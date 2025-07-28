@@ -55,21 +55,10 @@
             >
                 <el-table-column prop="name" label="名称" width="180"></el-table-column>
                 <el-table-column prop="address" label="地址"></el-table-column>
+                <el-table-column prop="trading_area_name" label="商圈"></el-table-column>
                 <el-table-column prop="completion_time" label="建成时间" width="140"></el-table-column>
                 <el-table-column prop="type" label="类型" width="120"></el-table-column>
-                <el-table-column prop="tags" label="特色">
-                    <template #default="scope">
-                        <el-tag 
-                            v-for="(tag, index) in scope.row.tags" 
-                            :key="index"
-                            type="info"
-                            size="small"
-                            style="margin-right: 5px;"
-                        >
-                            {{ tag }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
+                <el-table-column prop="tags" label="特色"></el-table-column>
                 <el-table-column prop="average_price" label="2025-7月均价" width="140">
                     <template #default="scope">
                         <span>{{ scope.row.average_price | formatPrice }}</span>
